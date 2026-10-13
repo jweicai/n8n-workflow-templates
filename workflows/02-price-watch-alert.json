@@ -1,0 +1,131 @@
+{
+  "name": "Price Watch → Telegram Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      },
+      "id": "b2e4d6f8-0001-4000-8000-000000000001",
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.your-shop.example.com/products/12345",
+        "options": {}
+      },
+      "id": "b2e4d6f8-0002-4000-8000-000000000002",
+      "name": "Fetch current price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "price",
+              "value": "={{ $json.price }}",
+              "type": "number"
+            },
+            {
+              "id": "p2",
+              "name": "title",
+              "value": "={{ $json.title || 'Watched product' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2e4d6f8-0003-4000-8000-000000000003",
+      "name": "Extract price",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.price }}",
+              "rightValue": 49.99,
+              "operator": { "type": "number", "operation": "lt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2e4d6f8-0004-4000-8000-000000000004",
+      "name": "Price below target?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [420, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.telegram.org/bot{{ $credentials.telegramBotToken }}/sendMessage",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $credentials.telegramChatId }}"
+            },
+            {
+              "name": "text",
+              "value": "=🔔 Price drop: {{ $('Extract price').item.json.title }} is now ${{ $('Extract price').item.json.price }} (target: $49.99)."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2e4d6f8-0005-4000-8000-000000000005",
+      "name": "Send Telegram alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, -100]
+    },
+    {
+      "parameters": {},
+      "id": "b2e4d6f8-0006-4000-8000-000000000006",
+      "name": "No alert needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [640, 120]
+    }
+  ],
+  "connections": {
+    "Every 6 hours": {
+      "main": [[{ "node": "Fetch current price", "type": "main", "index": 0 }]]
+    },
+    "Fetch current price": {
+      "main": [[{ "node": "Extract price", "type": "main", "index": 0 }]]
+    },
+    "Extract price": {
+      "main": [[{ "node": "Price below target?", "type": "main", "index": 0 }]]
+    },
+    "Price below target?": {
+      "main": [
+        [{ "node": "Send Telegram alert", "type": "main", "index": 0 }],
+        [{ "node": "No alert needed", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

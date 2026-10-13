@@ -1,0 +1,90 @@
+{
+  "name": "Lead Capture → CRM/Sheets Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-captured",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a1f2c3d4-0001-4000-8000-000000000001",
+      "name": "On form submit",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 0],
+      "webhookId": "lead-captured"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "name",
+              "value": "={{ $json.body.name || $json.body['Full Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "email",
+              "value": "={{ $json.body.email || $json.body['E-mail'] }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "source",
+              "value": "={{ $json.body.source || 'web-form' }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "captured_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1f2c3d4-0002-4000-8000-000000000002",
+      "name": "Normalize lead fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.your-crm.example.com/leads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.name, email: $json.email, source: $json.source, captured_at: $json.captured_at }) }}",
+        "options": {}
+      },
+      "id": "a1f2c3d4-0003-4000-8000-000000000003",
+      "name": "Push to CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0]
+    }
+  ],
+  "connections": {
+    "On form submit": {
+      "main": [[{ "node": "Normalize lead fields", "type": "main", "index": 0 }]]
+    },
+    "Normalize lead fields": {
+      "main": [[{ "node": "Push to CRM", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
